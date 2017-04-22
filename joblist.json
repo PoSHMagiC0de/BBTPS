@@ -1,0 +1,18 @@
+[{
+    "jobName"   :"testjob1",
+    "encoding"  :"text",
+    "command"   :"get-selecteddir -Path 'c:\\'",
+    "scriptName":"testjob1.ps1"
+},
+{
+    "jobName"   :"testjob2",
+    "encoding"  :"base64",
+    "command"   :"get-selecteddir -Path 'c:\\'",
+    "scriptName":"testjob2.b64"
+},
+{
+    "jobName"   :"testjob3",
+    "encoding"  :"compressed",
+    "command"   :"get-selecteddir -Path 'c:\\'",
+    "scriptName":"Mimienc.txt"
+}]

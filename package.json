@@ -1,0 +1,15 @@
+{
+  "name": "bbmultiserv",
+  "version": "0.0.5",
+  "description": "BashBunny MultiServe Server.  Serves multiple payloads from bash bunny.",
+  "main": "payserver.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "PoSHMagiC0de",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.17.1",
+    "express": "^4.15.2"
+  }
+}
