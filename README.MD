@@ -76,6 +76,8 @@ The BBTPS can not only send out jobs but receive data from your scripts in the B
 
 To help with debugging your scripts in the agent, in the payload.txt you can enable debugging.  This runs a download cradle not hidden and the agent verbose so you can see what is taking place.
 
-Right now the agent only works with Powershell 3.0 and higher.  I am working out the kinks to make it fully 2.0 compliant.
+~~Right now the agent only works with Powershell 3.0 and higher.  I am working out the kinks to make it fully 2.0 compliant.~~
+
+**4/24/2017 Updated the BunnyAgent so it now works in Powershell 2.0.**
 
 This documentation is a work in progress as well as this project.  expect bugs.
