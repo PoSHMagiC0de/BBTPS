@@ -23,7 +23,6 @@ var joblist = require(__dirname + '/joblist.json');
 
 function joblistparser(jobOb){    
     for(i=0;i<jobOb.length;i++){
-        jobOb[i].encoding = jobOb[i].encoding.toLowerCase();        
         if(fs.existsSync(jobsfolder + jobOb[i].scriptName)){
             jobOb[i].scriptName = jobsfolder + jobOb[i].scriptName;
         }else{
@@ -64,7 +63,6 @@ app.get('/getJob1', function(req, res){
     if(sendjob){
         var payload = {};
         payload.jobName = sendjob.jobName;
-        payload.encoding = sendjob.encoding;
         payload.command = sendjob.command;
         fs.readFile(sendjob.scriptName, 'utf8', function(err, data){
             if(err){
@@ -88,7 +86,6 @@ app.get('/getJob1', function(req, res){
 app.post('/addJob', function(req, res){
     console.log(req.body);
     var addJobObj = req.body;
-    addJobObj.encoding = addJobObj.encoding.toLowerCase();    
     if(fs.existsSync(jobsfolder + addJobObj.scriptName)){
         addJobObj.scriptName = jobsfolder + addJobObj.scriptName;
         joblist.push(addJobObj);
