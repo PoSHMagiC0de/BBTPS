@@ -1,12 +1,10 @@
 [{
     "jobName"   :"Name of job, used for file name.",
-    "encoding"  :"takes one of these values: text, base64 or compressed",
     "command"   :"Powershell function and parameters to execute your code.",
     "scriptName":"Name of script file in jobs folder"
 },
 {
     "jobName"   :"",
-    "encoding"  :"",
     "command"   :"",
     "scriptName":""
 }]
