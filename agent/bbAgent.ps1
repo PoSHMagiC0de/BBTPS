@@ -158,14 +158,11 @@ function Invoke-bbAgent
                 {
                     $emptycount = 0
                     Write-Verbose ("Payload encoding is: {0}" -f $payloadobj.encoding)
-                    if($payloadobj.encoding -eq "base64")
+                    if($payloadobj.payload)
                     {                        
-                        $payloadobj.payload = ConvertFrom-Base64 -payload $($payloadobj.payload)
-                    }
-                    if($payloadobj.encoding -eq "compressed")
-                    {
                         $payloadobj.payload = ConvertFrom-CompressedEncoded -CompressedScript $($payloadobj.payload)
                     }
+                    
                     Write-Verbose "Appending command to script."
                     $payloadobj.payload += $payloadobj.command
                     Write-Verbose "Creating scriptblock from payload."

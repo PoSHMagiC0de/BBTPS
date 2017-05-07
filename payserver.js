@@ -2,6 +2,7 @@
 var prc = require('child_process');
 prc.exec('LED SPECIAL1').unref();
 var fs = require('fs');
+var zlib = require('zlib');
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
@@ -22,17 +23,12 @@ var joblist = require(__dirname + '/joblist.json');
 
 function joblistparser(jobOb){    
     for(i=0;i<jobOb.length;i++){
-        jobOb[i].encoding = jobOb[i].encoding.toLowerCase();
-        if(encode_types.indexOf(joblist[i].encoding > -1)){
-            if(fs.existsSync(jobsfolder + jobOb[i].scriptName)){
-                jobOb[i].scriptName = jobsfolder + jobOb[i].scriptName;
-            }else{
-                jobOb.splice(i, 1);
-                console.log("removing job, script file invalid")
-            }
+        jobOb[i].encoding = jobOb[i].encoding.toLowerCase();        
+        if(fs.existsSync(jobsfolder + jobOb[i].scriptName)){
+            jobOb[i].scriptName = jobsfolder + jobOb[i].scriptName;
         }else{
             jobOb.splice(i, 1);
-            console.log('removing job, wrong encoding type.')
+            console.log("removing job, script file invalid")
         }
     }
     return jobOb;
@@ -90,15 +86,11 @@ app.get('/getJob1', function(req, res){
 app.post('/addJob', function(req, res){
     console.log(req.body);
     var addJobObj = req.body;
-    addJobObj.encoding = addJobObj.encoding.toLowerCase();
-    if(encode_types.indexOf(addJobObj.encoding) > -1){
-        if(fs.existsSync(jobsfolder + addJobObj.scriptName)){
-            addJobObj.scriptName = jobsfolder + addJobObj.scriptName;
-            joblist.push(addJobObj);
-            res.send('done');
-        }else{
-            res.send('error');
-        }
+    addJobObj.encoding = addJobObj.encoding.toLowerCase();    
+    if(fs.existsSync(jobsfolder + addJobObj.scriptName)){
+        addJobObj.scriptName = jobsfolder + addJobObj.scriptName;
+        joblist.push(addJobObj);
+        res.send('done');
     }else{
         res.send('error');
     }
