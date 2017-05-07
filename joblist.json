@@ -5,11 +5,6 @@
 },
 {
     "jobName"   :"testjob2",
-    "command"   :"get-selecteddir -Path 'c:\\'",
-    "scriptName":"testjob2.b64"
-},
-{
-    "jobName"   :"testjob3",
-    "command"   :"get-selecteddir -Path 'c:\\'",
-    "scriptName":"Mimienc.txt"
+    "command"   :"get-selecteddir -Path $env:userprofile\\Documents",
+    "scriptName":"testjob1.ps1"
 }]
