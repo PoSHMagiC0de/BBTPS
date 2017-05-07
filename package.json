@@ -1,6 +1,6 @@
 {
   "name": "bbmultiserv",
-  "version": "0.9",
+  "version": "0.9.0",
   "description": "BashBunny MultiServe Server.  Serves multiple payloads from bash bunny.",
   "main": "payserver.js",
   "scripts": {
