@@ -74,8 +74,7 @@ app.get('/getJob1', function(req, res){
                     payload.payload = buffer.toString('base64');
                     //console.log(payload);
                     res.json(payload);
-                })
-                
+                })                
             }
         });
     }else{
