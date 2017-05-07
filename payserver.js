@@ -70,9 +70,12 @@ app.get('/getJob1', function(req, res){
             if(err){
                 console.log("error reading payload");
             }else{
-                payload.payload = data;
-                //console.log(payload);
-                res.json(payload);
+                zlib.deflateRaw(new Buffer(data), function(err, buffer){
+                    payload.payload = buffer.toString('base64');
+                    //console.log(payload);
+                    res.json(payload);
+                })
+                
             }
         });
     }else{
