@@ -19,9 +19,7 @@ Your scripts should be formatted in regular text.  The server will compress and 
 
 If your scripts are going to return data that needs to be returned to the BashBunny, the output of the data should be as a string.  Consider piping your output to "out-string".
 
-The BBTPS can run you
-
-Exampler scripts in 2 modes.  As a thread or as a process.  If your script is never going to end or not in a reasonable time and does not need the BashBunny, set it up to run as a process so it is fired off as a separate process and not hold up the BBTPS.  If it needs to return data to the Bunny, run it as a thread.
+The BBTPS can run your scripts in 2 modes.  As a thread or as a process.  If your script is never going to end or not in a reasonable time and does not need the BashBunny, set it up to run as a process so it is fired off as a separate process and not hold up the BBTPS.  If it needs to return data to the Bunny, run it as a thread.
 
 ```gci c:\ | out-string```
 
