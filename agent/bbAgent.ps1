@@ -110,7 +110,6 @@ function Invoke-bbAgent
             [Parameter(Mandatory=$true)]
             [psobject]$ReturnData
         )
-        Write-Host $ReturnData
         $jsonJob = ConvertTo-Json20 -item $ReturnData
         Write-Verbose ("Data being sent is: {0}" -f $jsonJob)
         Write-Verbose ("Url being sent to: {0}" -f $dataURL)
