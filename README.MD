@@ -1,4 +1,4 @@
-# BashBunny Total P0wn System
+# BashBunny Total P0wn System v1.0
 
 Author: PoSHMag1C0de
 
@@ -10,18 +10,18 @@ Right now I am only working on a Powershell agent.  Maybe there will be others w
 ## Directions
 
 ## Installation
-This tool/payload uses express so you will need to clone the repository to your computer and run ```npm install``` while in the repository's folder to install express.  You will need npm and node installed to do this.  After that, just put the BashBunny in arming mode and copy the contents of the repo to one of the switch folders.  Configure and go P0wn something.
+This tool/payload uses express so you will need to clone the repository to your computer and run ```npm install``` while in the repository's folder to install express.  You will need npm and node installed to do this.  After that, just put the BashBunny in arming mode and copy the contents of the repo to one of the switch folders.  Configure and go P0wn something.  It will give you an error about can't copy a .bin file under modules.  Skip that folder, it is not needed for operation.
 
 ### Script formats
 Your Powershell scripts should be formatted as functions like in the Powersploit guide.  This makes your scripts modular so they can be loaded and then ran with parameters.  BBTPS handles scripts formatted like this.
 
-Your scripts can be formatted in regular text, base64 encoded in ASCII or compressed.  A utilities folder contains a Powershell script originally Out-CompressedScript I modified to output just the base64 compressed script, minus the command to decompress it.  That part is in the BunnyAgent.  All Powershell scripts are stored in the jobs folder.  I included a few test scripts that does get directory listings to see an example.
+Your scripts should be formatted in regular text.  The server will compress and base64 your script and add it to the json payload to be delivered to agent.  All Powershell scripts are stored in the jobs folder.  I included a few test scripts that gets directory listings to see an example.
 
 If your scripts are going to return data that needs to be returned to the BashBunny, the output of the data should be as a string.  Consider piping your output to "out-string".
 
-If you have any jobs that are supposed to keep running even after the BashBunny is done, please encapsulate them in a here-string to be kicked off in a separate process with start-process.  The system is setup so when jobs are done, the BashBunny will indicate it but if you have a job that will never end then the BunnyAgent task for that job will never end thus you never get a signal on the BashBunny that it is done.
+The BBTPS can run you
 
-Example
+Exampler scripts in 2 modes.  As a thread or as a process.  If your script is never going to end or not in a reasonable time and does not need the BashBunny, set it up to run as a process so it is fired off as a separate process and not hold up the BBTPS.  If it needs to return data to the Bunny, run it as a thread.
 
 ```gci c:\ | out-string```
 
@@ -37,9 +37,9 @@ The joblist.json file is where all the scripts you want to be delivered to the B
 
 Name of the script job.  Must be unique to avoid conflicts.  This is also the name of the text file that will be saved in the loot folder that will contain the data for that job.  The value is a string and should contain no special characters.
 
-**encoding**
+**runType**
 
-The format the script is in.  The correct values are text, base64 and compressed.  This info is sent to the BunnyAgent so it knows what format to convert the script from to properly run it.  This value is a string.
+How you want your script to be ran.  As a separate process or a thread.  This value is a string of either "thread" or "process"
 
 **command**
 
@@ -76,8 +76,9 @@ The BBTPS can not only send out jobs but receive data from your scripts in the B
 
 To help with debugging your scripts in the agent, in the payload.txt you can enable debugging.  This runs a download cradle not hidden and the agent verbose so you can see what is taking place.
 
-~~Right now the agent only works with Powershell 3.0 and higher.  I am working out the kinks to make it fully 2.0 compliant.~~
+
+**5/7/2017 BunnyAgent receives all jobs from server as compressed now.  Server will compress for you, just save script as normal text as a function**
 
 **4/24/2017 Updated the BunnyAgent so it now works in Powershell 2.0.**
 
-This documentation is a work in progress as well as this project.  expect bugs.
+This documentation is a work in progress as well as this project.  Expect bugs.

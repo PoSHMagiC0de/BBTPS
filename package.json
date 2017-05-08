@@ -1,7 +1,7 @@
 {
-  "name": "bbmultiserv",
-  "version": "0.9.0",
-  "description": "BashBunny MultiServe Server.  Serves multiple payloads from bash bunny.",
+  "name": "bbtps",
+  "version": "1.0.0",
+  "description": "BashBunny BBTPS MultiServe Server.  Serves multiple payloads from bash bunny.",
   "main": "payserver.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

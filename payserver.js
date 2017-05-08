@@ -6,11 +6,10 @@ var zlib = require('zlib');
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
-var port = process.env['SERVER_PORT'] || 1337;
+var port = 1337;
 var lootdir = process.env['LOOTDIR'] || __dirname + '/tmploot';
 var jobsfolder = __dirname + '/jobs/';
 var agentfile = __dirname + '/agent/bbAgent.ps1';
-var encode_types = ['text','base64','compressed'];
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended:false}));
@@ -20,19 +19,10 @@ var AgentRequested = false;
 
 //process jobslist
 var joblist = require(__dirname + '/joblist.json');
+var helper = require(__dirname + '/helpers.js');
 
-function joblistparser(jobOb){    
-    for(i=0;i<jobOb.length;i++){
-        if(fs.existsSync(jobsfolder + jobOb[i].scriptName)){
-            jobOb[i].scriptName = jobsfolder + jobOb[i].scriptName;
-        }else{
-            jobOb.splice(i, 1);
-            console.log("removing job, script file invalid")
-        }
-    }
-    return jobOb;
-}
-joblist = joblistparser(joblist);
+joblist = helper.jobParser(joblist, jobsfolder);
+console.log(joblist);
 
 app.get('/getAgent', function(req, res){
     console.log('Agent Requested...');
@@ -64,6 +54,7 @@ app.get('/getJob1', function(req, res){
         var payload = {};
         payload.jobName = sendjob.jobName;
         payload.command = sendjob.command;
+        payload.runType = sendjob.runType.toLowerCase();
         fs.readFile(sendjob.scriptName, 'utf8', function(err, data){
             if(err){
                 console.log("error reading payload");
@@ -86,8 +77,8 @@ app.get('/getJob1', function(req, res){
 app.post('/addJob', function(req, res){
     console.log(req.body);
     var addJobObj = req.body;
-    if(fs.existsSync(jobsfolder + addJobObj.scriptName)){
-        addJobObj.scriptName = jobsfolder + addJobObj.scriptName;
+    addJobObj = helper.jobParser(addJobObj, jobsfolder);
+    if(addJobObj){        
         joblist.push(addJobObj);
         res.send('done');
     }else{
