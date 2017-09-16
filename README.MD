@@ -21,24 +21,18 @@ Note: If you are planning on delivering one payload, it is better if you customi
 Below will be how to get the BBTPS up and going and using the default payload groups included.  I will be working on wiki documentation on how to configure BBTPS to work with your own list of payloads.  The link for the wiki will appear here when done.  In the meantime, there is a default payload pack for testing and totalp0wn pack with some popular scripts, a couple I created myself.
 
 ## Requirements
-* NodeJS and NPM installed on desktop you are cloning BBTPS to.
-    * They are needed for you to downloaded the required packages for the NodeJS server that will be running on the Bunny.
+
 * BashBunny Firmware version 1.3 +.
 * [Impacket](https://forums.hak5.org/index.php?/topic/40971-info-tools/) tools installed on Bash Bunny for smb services.
 
 ## Installation
 
-1. Clone the BBTPS to your local machine.
-2. Enter the cloned folder and run ```npm install```.
-3. After all packages are downloaded, insert your BashBunny into your computer in arming mode.
-4. Browse to your file folders on your Bash Bunny to "/payloads/(switch position of your choice)".
-5. copy the contents of the BBTPS folder to the switch location you chose.
-
-_Note: You will get errors about "." files not support.  Ignore them and continue copying._
-
-6. Configure the jobselect.txt to point to your configuration file. (_currently pointing to TP payload config_)
-7. Configure the payload configuration file to point to your folder containing your scripts and point to your joblist file. (_Currently pointing at TotalP0wn scripts folder and joblist 2_).
-8. Configure joblist file for scripts to be ran. (_Sample jobslists already in jobs folder and template in templates folder_).
+1. Insert your BashBunny into your computer in arming mode.
+2. Browse to your file folders on your Bash Bunny to "/payloads/(switch position of your choice)".
+3. Copy the contents of the BBTPS folder to the switch location you chose.
+4. Configure the jobselect.txt to point to your configuration file. (_currently pointing to TP payload config_)
+5. Configure the payload configuration file to point to your folder containing your scripts and point to your joblist file. (_Currently pointing at TotalP0wn scripts folder and joblist 2_).
+6. Configure joblist file for scripts to be ran. (_Sample jobslists already in jobs folder and template in templates folder_).
 
 **Payload.txt** should not be modified unless attempting to improve system.  Primary files that are safe to edit and are used to configure the BBTPS for your payloads are below.
 
